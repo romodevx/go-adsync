@@ -73,6 +73,7 @@ func (c *Config) Validate() error {
 	}
 
 	c.setDefaults()
+
 	return nil
 }
 
@@ -81,12 +82,15 @@ func (c *Config) validateRequired() error {
 	if c.Host == "" {
 		return ErrInvalidConfig
 	}
+
 	if c.Username == "" {
 		return ErrInvalidConfig
 	}
+
 	if c.Password == "" {
 		return ErrInvalidConfig
 	}
+
 	if c.BaseDN == "" {
 		return ErrInvalidConfig
 	}
@@ -94,6 +98,7 @@ func (c *Config) validateRequired() error {
 	if c.PageSize <= 0 {
 		return ErrInvalidPageSize
 	}
+
 	return nil
 }
 
@@ -106,12 +111,15 @@ func (c *Config) setDefaults() {
 	if c.Timeout <= 0 {
 		c.Timeout = 30 * time.Second
 	}
+
 	if c.RetryCount < 0 {
 		c.RetryCount = 3
 	}
+
 	if c.RetryDelay <= 0 {
 		c.RetryDelay = 5 * time.Second
 	}
+
 	if c.Port <= 0 {
 		if c.UseSSL {
 			c.Port = 636
@@ -119,9 +127,11 @@ func (c *Config) setDefaults() {
 			c.Port = 389
 		}
 	}
+
 	if c.SessionFile == "" {
 		c.SessionFile = ".adsync_session"
 	}
+
 	if len(c.Attributes) == 0 {
 		c.Attributes = []string{"cn", "sn", "givenName", "mail", "sAMAccountName", "distinguishedName", "memberOf"}
 	}

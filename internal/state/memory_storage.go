@@ -8,7 +8,7 @@ import (
 )
 
 // MemoryStateStorage implements StateStorage using in-memory storage.
-// This is primarily used for testing purposes
+// This is primarily used for testing purposes.
 type MemoryStateStorage struct {
 	data  map[string]any
 	mutex sync.RWMutex
@@ -71,6 +71,7 @@ func (m *MemoryStateStorage) Exists(key string) bool {
 	defer m.mutex.RUnlock()
 
 	_, exists := m.data[key]
+
 	return exists
 }
 
@@ -99,5 +100,6 @@ func (m *MemoryStateStorage) Keys() []string {
 	for key := range m.data {
 		keys = append(keys, key)
 	}
+
 	return keys
 }

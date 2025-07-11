@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Standard errors
+// Standard errors.
 var (
 	ErrInvalidConfig        = errors.New("invalid configuration")
 	ErrConnectionFailed     = errors.New("ldap connection failed")
@@ -29,7 +29,7 @@ var (
 	ErrTimestampParseFailed = errors.New("unable to parse timestamp")
 )
 
-// ConnectionError represents LDAP connection errors
+// ConnectionError represents LDAP connection errors.
 type ConnectionError struct {
 	Host   string
 	Port   int
@@ -45,7 +45,7 @@ func (e *ConnectionError) Unwrap() error {
 	return e.Err
 }
 
-// AuthError represents authentication errors
+// AuthError represents authentication errors.
 type AuthError struct {
 	Username string
 	Reason   string
@@ -60,7 +60,7 @@ func (e *AuthError) Unwrap() error {
 	return e.Err
 }
 
-// SearchError represents LDAP search errors
+// SearchError represents LDAP search errors.
 type SearchError struct {
 	Filter string
 	BaseDN string
@@ -76,7 +76,7 @@ func (e *SearchError) Unwrap() error {
 	return e.Err
 }
 
-// PaginationError represents pagination-related errors
+// PaginationError represents pagination-related errors.
 type PaginationError struct {
 	Page   int
 	Cookie string
@@ -92,7 +92,7 @@ func (e *PaginationError) Unwrap() error {
 	return e.Err
 }
 
-// StateError represents state management errors
+// StateError represents state management errors.
 type StateError struct {
 	Operation string
 	Key       string
@@ -108,7 +108,7 @@ func (e *StateError) Unwrap() error {
 	return e.Err
 }
 
-// RetryableError indicates that an operation can be retried
+// RetryableError indicates that an operation can be retried.
 type RetryableError struct {
 	Err       error
 	Retryable bool
@@ -126,7 +126,7 @@ func (e *RetryableError) IsRetryable() bool {
 	return e.Retryable
 }
 
-// NewConnectionError creates a new connection error
+// NewConnectionError creates a new connection error.
 func NewConnectionError(host string, port int, reason string, err error) *ConnectionError {
 	return &ConnectionError{
 		Host:   host,
@@ -136,7 +136,7 @@ func NewConnectionError(host string, port int, reason string, err error) *Connec
 	}
 }
 
-// NewAuthError creates a new authentication error
+// NewAuthError creates a new authentication error.
 func NewAuthError(username, reason string, err error) *AuthError {
 	return &AuthError{
 		Username: username,
@@ -145,7 +145,7 @@ func NewAuthError(username, reason string, err error) *AuthError {
 	}
 }
 
-// NewSearchError creates a new search error
+// NewSearchError creates a new search error.
 func NewSearchError(filter, baseDN, reason string, err error) *SearchError {
 	return &SearchError{
 		Filter: filter,
@@ -155,7 +155,7 @@ func NewSearchError(filter, baseDN, reason string, err error) *SearchError {
 	}
 }
 
-// NewPaginationError creates a new pagination error
+// NewPaginationError creates a new pagination error.
 func NewPaginationError(page int, cookie, reason string, err error) *PaginationError {
 	return &PaginationError{
 		Page:   page,
@@ -165,7 +165,7 @@ func NewPaginationError(page int, cookie, reason string, err error) *PaginationE
 	}
 }
 
-// NewStateError creates a new state error
+// NewStateError creates a new state error.
 func NewStateError(operation, key, reason string, err error) *StateError {
 	return &StateError{
 		Operation: operation,
@@ -175,7 +175,7 @@ func NewStateError(operation, key, reason string, err error) *StateError {
 	}
 }
 
-// NewRetryableError creates a new retryable error
+// NewRetryableError creates a new retryable error.
 func NewRetryableError(err error, retryable bool) *RetryableError {
 	return &RetryableError{
 		Err:       err,
@@ -183,11 +183,12 @@ func NewRetryableError(err error, retryable bool) *RetryableError {
 	}
 }
 
-// IsRetryable checks if an error is retryable
+// IsRetryable checks if an error is retryable.
 func IsRetryable(err error) bool {
 	var retryableErr *RetryableError
 	if errors.As(err, &retryableErr) {
 		return retryableErr.IsRetryable()
 	}
+
 	return false
 }

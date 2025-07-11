@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Static errors
+// Static errors.
 var (
 	ErrEntryNil             = fmt.Errorf("entry is nil")
 	ErrUsernameRequired     = fmt.Errorf("username is required")
@@ -17,13 +17,13 @@ var (
 	ErrTimestampParseFailed = fmt.Errorf("unable to parse timestamp")
 )
 
-// UserParser handles parsing LDAP entries into User objects
+// UserParser handles parsing LDAP entries into User objects.
 type UserParser struct {
 	attributeMapping map[string]string
 	logger           *zap.Logger
 }
 
-// User represents a parsed user from LDAP
+// User represents a parsed user from LDAP.
 type User struct {
 	DN           string            `json:"dn"`
 	Username     string            `json:"username"`
@@ -36,7 +36,7 @@ type User struct {
 	LastModified time.Time         `json:"last_modified"`
 }
 
-// NewUserParser creates a new user parser with default attribute mapping
+// NewUserParser creates a new user parser with default attribute mapping.
 func NewUserParser(logger *zap.Logger) *UserParser {
 	if logger == nil {
 		logger = zap.NewNop()
@@ -56,12 +56,12 @@ func NewUserParser(logger *zap.Logger) *UserParser {
 	}
 }
 
-// SetAttributeMapping sets custom attribute mapping
+// SetAttributeMapping sets custom attribute mapping.
 func (p *UserParser) SetAttributeMapping(mapping map[string]string) {
 	p.attributeMapping = mapping
 }
 
-// ParseEntry parses an LDAP entry into a User object
+// ParseEntry parses an LDAP entry into a User object.
 func (p *UserParser) ParseEntry(entry *ldap.Entry) (*User, error) {
 	if entry == nil {
 		return nil, ErrEntryNil
@@ -76,10 +76,11 @@ func (p *UserParser) ParseEntry(entry *ldap.Entry) (*User, error) {
 	}
 
 	p.logParsedUser(user)
+
 	return user, nil
 }
 
-// createUserStruct creates an initialized User struct
+// createUserStruct creates an initialized User struct.
 func (p *UserParser) createUserStruct(dn string) *User {
 	return &User{
 		DN:           dn,
@@ -94,14 +95,14 @@ func (p *UserParser) createUserStruct(dn string) *User {
 	}
 }
 
-// parseAttributes parses LDAP attributes into the User struct
+// parseAttributes parses LDAP attributes into the User struct.
 func (p *UserParser) parseAttributes(user *User, attributes []*ldap.EntryAttribute) {
 	for _, attr := range attributes {
 		p.parseAttribute(user, attr)
 	}
 }
 
-// parseAttribute parses a single LDAP attribute
+// parseAttribute parses a single LDAP attribute.
 func (p *UserParser) parseAttribute(user *User, attr *ldap.EntryAttribute) {
 	attrName := strings.ToLower(attr.Name)
 
@@ -125,14 +126,14 @@ func (p *UserParser) parseAttribute(user *User, attr *ldap.EntryAttribute) {
 	}
 }
 
-// setStringValue sets a string value from LDAP attribute values
+// setStringValue sets a string value from LDAP attribute values.
 func (p *UserParser) setStringValue(target *string, values []string) {
 	if len(values) > 0 {
 		*target = values[0]
 	}
 }
 
-// setTimestampValue sets a timestamp value from LDAP attribute values
+// setTimestampValue sets a timestamp value from LDAP attribute values.
 func (p *UserParser) setTimestampValue(target *time.Time, values []string) {
 	if len(values) > 0 {
 		if parsed, err := p.parseTimestamp(values[0]); err == nil {
@@ -141,14 +142,14 @@ func (p *UserParser) setTimestampValue(target *time.Time, values []string) {
 	}
 }
 
-// setAttributeValue sets a custom attribute value
+// setAttributeValue sets a custom attribute value.
 func (p *UserParser) setAttributeValue(attributes map[string]string, name string, values []string) {
 	if len(values) > 0 {
 		attributes[name] = values[0]
 	}
 }
 
-// setDisplayNameIfEmpty sets display name if not provided
+// setDisplayNameIfEmpty sets display name if not provided.
 func (p *UserParser) setDisplayNameIfEmpty(user *User) {
 	if user.DisplayName == "" {
 		user.DisplayName = fmt.Sprintf("%s %s", user.FirstName, user.LastName)
@@ -156,15 +157,16 @@ func (p *UserParser) setDisplayNameIfEmpty(user *User) {
 	}
 }
 
-// validateUser validates required user fields
+// validateUser validates required user fields.
 func (p *UserParser) validateUser(user *User, dn string) error {
 	if user.Username == "" {
 		return fmt.Errorf("%w but not found in entry: %s", ErrUsernameRequired, dn)
 	}
+
 	return nil
 }
 
-// logParsedUser logs the parsed user information
+// logParsedUser logs the parsed user information.
 func (p *UserParser) logParsedUser(user *User) {
 	p.logger.Debug("parsed user entry",
 		zap.String("dn", user.DN),
@@ -172,7 +174,7 @@ func (p *UserParser) logParsedUser(user *User) {
 		zap.String("email", user.Email))
 }
 
-// ParseEntries parses multiple LDAP entries into User objects
+// ParseEntries parses multiple LDAP entries into User objects.
 func (p *UserParser) ParseEntries(entries []*ldap.Entry) ([]*User, error) {
 	users := make([]*User, 0, len(entries))
 
@@ -199,7 +201,7 @@ func (p *UserParser) ParseEntries(entries []*ldap.Entry) ([]*User, error) {
 	return users, nil
 }
 
-// parseTimestamp parses various timestamp formats commonly used in LDAP
+// parseTimestamp parses various timestamp formats commonly used in LDAP.
 func (p *UserParser) parseTimestamp(timestamp string) (time.Time, error) {
 	// Common LDAP timestamp formats
 	formats := []string{
@@ -218,7 +220,7 @@ func (p *UserParser) parseTimestamp(timestamp string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("%w: %s", ErrTimestampParseFailed, timestamp)
 }
 
-// FilterUsers filters users based on criteria
+// FilterUsers filters users based on criteria.
 func (p *UserParser) FilterUsers(users []*User, filter func(*User) bool) []*User {
 	filtered := make([]*User, 0)
 
@@ -231,33 +233,37 @@ func (p *UserParser) FilterUsers(users []*User, filter func(*User) bool) []*User
 	return filtered
 }
 
-// GetUserByDN finds a user by DN
+// GetUserByDN finds a user by DN.
 func (p *UserParser) GetUserByDN(users []*User, dn string) *User {
 	for _, user := range users {
 		if user.DN == dn {
 			return user
 		}
 	}
+
 	return nil
 }
 
-// GetUserByUsername finds a user by username
+// GetUserByUsername finds a user by username.
 func (p *UserParser) GetUserByUsername(users []*User, username string) *User {
 	for _, user := range users {
 		if strings.EqualFold(user.Username, username) {
 			return user
 		}
 	}
+
 	return nil
 }
 
-// ValidateUser validates that a user has required fields
+// ValidateUser validates that a user has required fields.
 func (p *UserParser) ValidateUser(user *User) error {
 	if user.DN == "" {
 		return ErrDNRequired
 	}
+
 	if user.Username == "" {
 		return ErrUsernameRequired
 	}
+
 	return nil
 }

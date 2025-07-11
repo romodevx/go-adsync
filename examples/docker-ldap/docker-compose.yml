@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # OpenLDAP Server para testing local
+  # OpenLDAP Server for local testing
   openldap:
     image: osixia/openldap:1.5.0
     container_name: go-adsync-ldap
@@ -38,7 +38,7 @@ services:
       - "636:636"
     hostname: ldap.example.com
 
-  # phpLDAPadmin para administración web
+  # phpLDAPadmin for web administration
   phpldapadmin:
     image: osixia/phpldapadmin:latest
     container_name: go-adsync-admin
@@ -50,7 +50,7 @@ services:
     depends_on:
       - openldap
 
-  # Script para poblar datos de prueba
+  # Script to populate test data
   ldap-seed:
     image: osixia/openldap:1.5.0
     container_name: go-adsync-seed
@@ -64,6 +64,6 @@ services:
       bash -c "
         sleep 10 &&
         ldapadd -x -D 'cn=admin,dc=example,dc=com' -w adminpassword -H ldap://openldap:389 -f /tmp/seed-data.ldif &&
-        echo 'Datos de prueba cargados exitosamente'
+        echo 'Test data loaded successfully'
       "
     restart: "no"

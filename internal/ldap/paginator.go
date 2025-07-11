@@ -90,6 +90,7 @@ func (p *Paginator) NextPage() (*ldap.SearchResult, error) {
 	result, err := p.client.Search(searchRequest)
 	if err != nil {
 		p.logger.Error("failed to fetch page", zap.Error(err))
+
 		return nil, fmt.Errorf("failed to fetch page: %w", err)
 	}
 
@@ -120,23 +121,26 @@ func (p *Paginator) NextPage() (*ldap.SearchResult, error) {
 func (p *Paginator) HasMore() bool {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
+
 	return p.hasMore
 }
 
-// GetLastCookie returns the last cookie received
+// GetLastCookie returns the last cookie received.
 func (p *Paginator) GetLastCookie() []byte {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
+
 	if p.lastCookie == nil {
 		return nil
 	}
 	// Return a copy to prevent modification
 	cookie := make([]byte, len(p.lastCookie))
 	copy(cookie, p.lastCookie)
+
 	return cookie
 }
 
-// SetLastCookie sets the last cookie for resuming pagination
+// SetLastCookie sets the last cookie for resuming pagination.
 func (p *Paginator) SetLastCookie(cookie []byte) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -144,6 +148,7 @@ func (p *Paginator) SetLastCookie(cookie []byte) {
 	if cookie == nil {
 		p.lastCookie = nil
 		p.hasMore = true
+
 		return
 	}
 
@@ -155,14 +160,15 @@ func (p *Paginator) SetLastCookie(cookie []byte) {
 		zap.Bool("has_cookie", len(p.lastCookie) > 0))
 }
 
-// GetPageCount returns the number of pages fetched
+// GetPageCount returns the number of pages fetched.
 func (p *Paginator) GetPageCount() int {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
+
 	return p.pageCount
 }
 
-// Reset resets the paginator to start from the beginning
+// Reset resets the paginator to start from the beginning.
 func (p *Paginator) Reset() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -174,7 +180,7 @@ func (p *Paginator) Reset() {
 	p.logger.Debug("paginator reset")
 }
 
-// AllPages returns all pages as a channel
+// AllPages returns all pages as a channel.
 func (p *Paginator) AllPages() (<-chan *ldap.SearchResult, <-chan error) {
 	resultChan := make(chan *ldap.SearchResult, 10)
 	errChan := make(chan error, 1)
@@ -187,6 +193,7 @@ func (p *Paginator) AllPages() (<-chan *ldap.SearchResult, <-chan error) {
 			result, err := p.NextPage()
 			if err != nil {
 				errChan <- err
+
 				return
 			}
 
@@ -199,9 +206,10 @@ func (p *Paginator) AllPages() (<-chan *ldap.SearchResult, <-chan error) {
 	return resultChan, errChan
 }
 
-// GetTotalEntries returns the total number of entries across all pages
+// GetTotalEntries returns the total number of entries across all pages.
 func (p *Paginator) GetTotalEntries() int {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
+
 	return int(p.config.PageSize) * p.pageCount
 }

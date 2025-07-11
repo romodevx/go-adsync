@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Config represents the configuration for the AD synchronizer
+// Config represents the configuration for the AD synchronizer.
 type Config struct {
 	// LDAP Connection settings
 	Host          string `json:"host"`
@@ -36,7 +36,7 @@ type Config struct {
 	LogLevel string      `json:"log_level,omitempty"`
 }
 
-// User represents an Active Directory user
+// User represents an Active Directory user.
 type User struct {
 	DN           string            `json:"dn"`
 	Username     string            `json:"username"`
@@ -49,7 +49,7 @@ type User struct {
 	LastModified time.Time         `json:"last_modified"`
 }
 
-// SyncResult represents the result of a synchronization operation
+// SyncResult represents the result of a synchronization operation.
 type SyncResult struct {
 	TotalUsers     int           `json:"total_users"`
 	ProcessedUsers int           `json:"processed_users"`
@@ -60,7 +60,7 @@ type SyncResult struct {
 	Errors         []error       `json:"errors"`
 }
 
-// StateStorage defines the interface for state persistence
+// StateStorage defines the interface for state persistence.
 type StateStorage interface {
 	Save(key string, value any) error
 	Load(key string, dest any) error
@@ -68,7 +68,7 @@ type StateStorage interface {
 	Exists(key string) bool
 }
 
-// SyncMode defines the type of synchronization to perform
+// SyncMode defines the type of synchronization to perform.
 type SyncMode int
 
 const (
@@ -77,7 +77,7 @@ const (
 	SyncModeResume
 )
 
-// SyncStats represents synchronization statistics
+// SyncStats represents synchronization statistics.
 type SyncStats struct {
 	StartTime      time.Time     `json:"start_time"`
 	EndTime        time.Time     `json:"end_time"`

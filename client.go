@@ -19,7 +19,7 @@ type Client struct {
 	logger     *zap.Logger
 }
 
-// NewClient creates a new LDAP client
+// NewClient creates a new LDAP client.
 func NewClient(config *Config) (*Client, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
@@ -77,25 +77,26 @@ func NewClient(config *Config) (*Client, error) {
 	return client, nil
 }
 
-// Connect establishes connection to LDAP server
+// Connect establishes connection to LDAP server.
 func (c *Client) Connect() error {
 	if err := c.ldapClient.ConnectWithRetry(); err != nil {
 		return fmt.Errorf("failed to connect to LDAP: %w", err)
 	}
+
 	return nil
 }
 
-// Disconnect closes the LDAP connection
+// Disconnect closes the LDAP connection.
 func (c *Client) Disconnect() {
 	c.ldapClient.Disconnect()
 }
 
-// IsConnected checks if client is connected
+// IsConnected checks if client is connected.
 func (c *Client) IsConnected() bool {
 	return c.ldapClient.IsConnected()
 }
 
-// SyncAll synchronizes all users with pagination
+// SyncAll synchronizes all users with pagination.
 func (c *Client) SyncAll(ctx context.Context) (<-chan *ldap.User, <-chan error) {
 	userChan := make(chan *ldap.User, 100)
 	errChan := make(chan error, 10)
@@ -112,7 +113,7 @@ func (c *Client) SyncAll(ctx context.Context) (<-chan *ldap.User, <-chan error) 
 	return userChan, errChan
 }
 
-// performSync handles the actual synchronization logic
+// performSync handles the actual synchronization logic.
 func (c *Client) performSync(ctx context.Context, userChan chan<- *ldap.User, incremental bool, since time.Time) error {
 	c.logger.Info("starting synchronization")
 
@@ -127,15 +128,16 @@ func (c *Client) performSync(ctx context.Context, userChan chan<- *ldap.User, in
 	return c.processPagination(ctx, userChan, incremental, since)
 }
 
-// ensureConnection ensures LDAP connection is established
+// ensureConnection ensures LDAP connection is established.
 func (c *Client) ensureConnection() error {
 	if !c.IsConnected() {
 		return c.Connect()
 	}
+
 	return nil
 }
 
-// processPagination handles the pagination loop
+// processPagination handles the pagination loop.
 func (c *Client) processPagination(ctx context.Context, userChan chan<- *ldap.User, _ bool, _ time.Time) error {
 	pageCount := 0
 	totalUsers := 0
@@ -159,10 +161,11 @@ func (c *Client) processPagination(ctx context.Context, userChan chan<- *ldap.Us
 	c.logger.Info("synchronization completed",
 		zap.Int("total_pages", pageCount),
 		zap.Int("total_users", totalUsers))
+
 	return nil
 }
 
-// processPage processes a single page of results
+// processPage processes a single page of results.
 func (c *Client) processPage(
 	ctx context.Context,
 	result *ldapv3.SearchResult,
@@ -180,7 +183,7 @@ func (c *Client) processPage(
 	return c.sendUsers(ctx, users, userChan, totalUsers, pageCount)
 }
 
-// sendUsers sends parsed users to the channel
+// sendUsers sends parsed users to the channel.
 func (c *Client) sendUsers(
 	ctx context.Context,
 	users []*ldap.User,
@@ -202,21 +205,23 @@ func (c *Client) sendUsers(
 		zap.Int("page", pageCount),
 		zap.Int("users_in_page", len(users)),
 		zap.Int("total_users", *totalUsers))
+
 	return nil
 }
 
-// checkContext checks if context is canceled
+// checkContext checks if context is canceled.
 func (c *Client) checkContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		c.logger.Info("synchronization canceled")
+
 		return ctx.Err()
 	default:
 		return nil
 	}
 }
 
-// SyncIncremental synchronizes users modified since a specific time
+// SyncIncremental synchronizes users modified since a specific time.
 func (c *Client) SyncIncremental(ctx context.Context, since time.Time) (<-chan *ldap.User, <-chan error) {
 	userChan := make(chan *ldap.User, 100)
 	errChan := make(chan error, 10)
@@ -233,7 +238,7 @@ func (c *Client) SyncIncremental(ctx context.Context, since time.Time) (<-chan *
 	return userChan, errChan
 }
 
-// performIncrementalSync handles incremental synchronization
+// performIncrementalSync handles incremental synchronization.
 func (c *Client) performIncrementalSync(ctx context.Context, userChan chan<- *ldap.User, since time.Time) error {
 	c.logger.Info("starting incremental synchronization", zap.Time("since", since))
 
@@ -242,10 +247,11 @@ func (c *Client) performIncrementalSync(ctx context.Context, userChan chan<- *ld
 	}
 
 	incrementalPaginator := c.createIncrementalPaginator(since)
+
 	return c.processIncrementalPagination(ctx, userChan, incrementalPaginator)
 }
 
-// createIncrementalPaginator creates paginator for incremental sync
+// createIncrementalPaginator creates paginator for incremental sync.
 func (c *Client) createIncrementalPaginator(since time.Time) *ldap.Paginator {
 	modifiedFilter := fmt.Sprintf("(&%s(whenChanged>=%s))",
 		c.config.Filter,
@@ -262,7 +268,7 @@ func (c *Client) createIncrementalPaginator(since time.Time) *ldap.Paginator {
 	return ldap.NewPaginator(c.ldapClient, paginatorConfig)
 }
 
-// processIncrementalPagination processes incremental pagination
+// processIncrementalPagination processes incremental pagination.
 func (c *Client) processIncrementalPagination(
 	ctx context.Context,
 	userChan chan<- *ldap.User,
@@ -290,10 +296,11 @@ func (c *Client) processIncrementalPagination(
 	c.logger.Info("incremental synchronization completed",
 		zap.Int("total_pages", pageCount),
 		zap.Int("total_users", totalUsers))
+
 	return nil
 }
 
-// processIncrementalPage processes a single incremental page
+// processIncrementalPage processes a single incremental page.
 func (c *Client) processIncrementalPage(
 	ctx context.Context,
 	result *ldapv3.SearchResult,
@@ -311,31 +318,33 @@ func (c *Client) processIncrementalPage(
 	return c.sendUsers(ctx, users, userChan, totalUsers, pageCount)
 }
 
-// GetLastCookie returns the last pagination cookie
+// GetLastCookie returns the last pagination cookie.
 func (c *Client) GetLastCookie() []byte {
 	return c.paginator.GetLastCookie()
 }
 
-// SetLastCookie sets the last pagination cookie for resuming
+// SetLastCookie sets the last pagination cookie for resuming.
 func (c *Client) SetLastCookie(cookie []byte) {
 	c.paginator.SetLastCookie(cookie)
 }
 
-// GetPageCount returns the number of pages processed
+// GetPageCount returns the number of pages processed.
 func (c *Client) GetPageCount() int {
 	return c.paginator.GetPageCount()
 }
 
-// HealthCheck performs a health check on the LDAP connection
+// HealthCheck performs a health check on the LDAP connection.
 func (c *Client) HealthCheck() error {
 	if err := c.ldapClient.HealthCheck(); err != nil {
 		return fmt.Errorf("LDAP health check failed: %w", err)
 	}
+
 	return nil
 }
 
-// Close closes the client and releases resources
+// Close closes the client and releases resources.
 func (c *Client) Close() error {
 	c.Disconnect()
+
 	return nil
 }

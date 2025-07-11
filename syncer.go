@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// syncer implements the Syncer interface
+// syncer implements the Syncer interface.
 type syncer struct {
 	config    *Config
 	client    *Client
@@ -24,7 +24,7 @@ type syncer struct {
 	startTime time.Time
 }
 
-// New creates a new Syncer instance
+// New creates a new Syncer instance.
 func New(config *Config) (Syncer, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
@@ -84,7 +84,7 @@ func New(config *Config) (Syncer, error) {
 	}, nil
 }
 
-// initializeSync sets up the sync operation
+// initializeSync sets up the sync operation.
 func (s *syncer) initializeSync() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -93,7 +93,7 @@ func (s *syncer) initializeSync() {
 	s.stats.StartTime = s.startTime
 }
 
-// finalizeSync completes the sync operation
+// finalizeSync completes the sync operation.
 func (s *syncer) finalizeSync() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -103,7 +103,7 @@ func (s *syncer) finalizeSync() {
 	s.stats.IsComplete = true
 }
 
-// SyncAll performs a complete synchronization of all users
+// SyncAll performs a complete synchronization of all users.
 func (s *syncer) SyncAll(ctx context.Context) (<-chan User, <-chan error) {
 	userChan := make(chan User, 100)
 	errChan := make(chan error, 10)
@@ -143,6 +143,7 @@ func (s *syncer) SyncAll(ctx context.Context) (<-chan User, <-chan error) {
 
 					continue
 				}
+
 				if err != nil {
 					s.mutex.Lock()
 					s.result.ErrorCount++
@@ -164,7 +165,7 @@ func (s *syncer) SyncAll(ctx context.Context) (<-chan User, <-chan error) {
 	return userChan, errChan
 }
 
-// SyncIncremental performs incremental synchronization since the given time
+// SyncIncremental performs incremental synchronization since the given time.
 func (s *syncer) SyncIncremental(ctx context.Context, since time.Time) (<-chan User, <-chan error) {
 	userChan := make(chan User, 100)
 	errChan := make(chan error, 10)
@@ -201,6 +202,7 @@ func (s *syncer) SyncIncremental(ctx context.Context, since time.Time) (<-chan U
 
 					continue
 				}
+
 				if err != nil {
 					s.mutex.Lock()
 					s.result.ErrorCount++
@@ -222,13 +224,14 @@ func (s *syncer) SyncIncremental(ctx context.Context, since time.Time) (<-chan U
 	return userChan, errChan
 }
 
-// SyncWithCallback performs synchronization with a callback function for each user
+// SyncWithCallback performs synchronization with a callback function for each user.
 func (s *syncer) SyncWithCallback(ctx context.Context, callback func(User) error) error {
 	userChan, errChan := s.SyncAll(ctx)
+
 	return s.processCallbackChannels(ctx, userChan, errChan, callback)
 }
 
-// processCallbackChannels processes user and error channels with callback
+// processCallbackChannels processes user and error channels with callback.
 func (s *syncer) processCallbackChannels(
 	ctx context.Context,
 	userChan <-chan User,
@@ -238,21 +241,11 @@ func (s *syncer) processCallbackChannels(
 	for {
 		select {
 		case user, ok := <-userChan:
-			if !ok {
-				userChan = nil
-
-				continue
-			}
-			if err := callback(user); err != nil {
-				return fmt.Errorf("callback error: %w", err)
+			if err := s.handleUserCallback(user, ok, callback, &userChan); err != nil {
+				return err
 			}
 		case err, ok := <-errChan:
-			if !ok {
-				errChan = nil
-
-				continue
-			}
-			if err != nil {
+			if err := s.handleErrorCallback(err, ok, &errChan); err != nil {
 				return err
 			}
 		case <-ctx.Done():
@@ -267,7 +260,37 @@ func (s *syncer) processCallbackChannels(
 	return nil
 }
 
-// Resume continues synchronization from the last saved state
+// handleUserCallback handles user callback processing.
+func (s *syncer) handleUserCallback(user User, ok bool, callback func(User) error, userChan *<-chan User) error {
+	if !ok {
+		*userChan = nil
+
+		return nil
+	}
+
+	if err := callback(user); err != nil {
+		return fmt.Errorf("callback error: %w", err)
+	}
+
+	return nil
+}
+
+// handleErrorCallback handles error callback processing.
+func (s *syncer) handleErrorCallback(err error, ok bool, errChan *<-chan error) error {
+	if !ok {
+		*errChan = nil
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Resume continues synchronization from the last saved state.
 func (s *syncer) Resume(ctx context.Context) (<-chan User, <-chan error) {
 	userChan := make(chan User, 100)
 	errChan := make(chan error, 10)
@@ -285,7 +308,7 @@ func (s *syncer) Resume(ctx context.Context) (<-chan User, <-chan error) {
 	return userChan, errChan
 }
 
-// loadLastCookieState loads the last cookie from storage if available
+// loadLastCookieState loads the last cookie from storage if available.
 func (s *syncer) loadLastCookieState() {
 	var lastCookie []byte
 	if err := s.storage.Load("last_cookie", &lastCookie); err == nil {
@@ -296,7 +319,7 @@ func (s *syncer) loadLastCookieState() {
 	}
 }
 
-// processResumeChannels processes the channels from LDAP client
+// processResumeChannels processes the channels from LDAP client.
 func (s *syncer) processResumeChannels(
 	ctx context.Context,
 	userChan chan<- User,
@@ -326,6 +349,7 @@ func (s *syncer) processResumeChannels(
 
 		case <-ctx.Done():
 			s.saveProgressWithLog("failed to save progress on exit")
+
 			return
 		}
 
@@ -335,7 +359,7 @@ func (s *syncer) processResumeChannels(
 	}
 }
 
-// processResumeUser processes a single user during resume
+// processResumeUser processes a single user during resume.
 func (s *syncer) processResumeUser(ldapUser *ldap.User, userChan chan<- User) {
 	user := s.convertLDAPUser(ldapUser)
 
@@ -351,7 +375,7 @@ func (s *syncer) processResumeUser(ldapUser *ldap.User, userChan chan<- User) {
 	}
 }
 
-// processResumeError processes an error during resume
+// processResumeError processes an error during resume.
 func (s *syncer) processResumeError(err error, errChan chan<- error) {
 	if err != nil {
 		s.mutex.Lock()
@@ -362,14 +386,14 @@ func (s *syncer) processResumeError(err error, errChan chan<- error) {
 	}
 }
 
-// saveProgressWithLog saves progress and logs any errors
+// saveProgressWithLog saves progress and logs any errors.
 func (s *syncer) saveProgressWithLog(logMessage string) {
 	if err := s.saveProgress(); err != nil {
 		s.logger.Warn(logMessage, zap.Error(err))
 	}
 }
 
-// GetStats returns current synchronization statistics
+// GetStats returns current synchronization statistics.
 func (s *syncer) GetStats() SyncStats {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -381,10 +405,11 @@ func (s *syncer) GetStats() SyncStats {
 			stats.UsersPerSecond = float64(stats.TotalPages*s.config.PageSize) / stats.Duration.Seconds()
 		}
 	}
+
 	return stats
 }
 
-// GetResult returns the final synchronization result
+// GetResult returns the final synchronization result.
 func (s *syncer) GetResult() SyncResult {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -392,7 +417,7 @@ func (s *syncer) GetResult() SyncResult {
 	return s.result
 }
 
-// Reset clears all saved state and starts fresh
+// Reset clears all saved state and starts fresh.
 func (s *syncer) Reset() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -429,7 +454,7 @@ func (s *syncer) Reset() error {
 	return nil
 }
 
-// Close releases all resources and closes connections
+// Close releases all resources and closes connections.
 func (s *syncer) Close() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -448,7 +473,7 @@ func (s *syncer) Close() error {
 	return nil
 }
 
-// convertLDAPUser converts an LDAP user to the public User type
+// convertLDAPUser converts an LDAP user to the public User type.
 func (s *syncer) convertLDAPUser(ldapUser *ldap.User) User {
 	return User{
 		DN:           ldapUser.DN,
@@ -463,7 +488,7 @@ func (s *syncer) convertLDAPUser(ldapUser *ldap.User) User {
 	}
 }
 
-// saveProgress saves the current synchronization progress
+// saveProgress saves the current synchronization progress.
 func (s *syncer) saveProgress() error {
 	cookie := s.client.GetLastCookie()
 	if cookie != nil {
@@ -483,7 +508,7 @@ func (s *syncer) saveProgress() error {
 	return nil
 }
 
-// createDefaultLogger creates a default logger with the specified level
+// createDefaultLogger creates a default logger with the specified level.
 func createDefaultLogger(level string) (*zap.Logger, error) {
 	config := zap.NewProductionConfig()
 
@@ -504,5 +529,6 @@ func createDefaultLogger(level string) (*zap.Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to build logger: %w", err)
 	}
+
 	return logger, nil
 }

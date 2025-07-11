@@ -70,7 +70,9 @@ func (c *Client) Connect() error {
 	var err error
 
 	var conn *ldap.Conn
+
 	var ldapURL string
+
 	if c.config.UseSSL {
 		ldapURL = fmt.Sprintf("ldaps://%s:%d", c.config.Host, c.config.Port)
 	} else {
@@ -93,6 +95,7 @@ func (c *Client) Connect() error {
 	if err != nil {
 		c.lastError = fmt.Errorf("failed to dial LDAP server: %w", err)
 		c.logger.Error("failed to connect to LDAP server", zap.Error(err))
+
 		return c.lastError
 	}
 
@@ -107,6 +110,7 @@ func (c *Client) Connect() error {
 
 		c.lastError = fmt.Errorf("failed to authenticate: %w", err)
 		c.logger.Error("failed to authenticate", zap.Error(err))
+
 		return c.lastError
 	}
 
@@ -136,6 +140,7 @@ func (c *Client) Disconnect() {
 func (c *Client) IsConnected() bool {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
+
 	return c.connected && c.conn != nil
 }
 
@@ -143,6 +148,7 @@ func (c *Client) IsConnected() bool {
 func (c *Client) Reconnect() error {
 	c.logger.Info("attempting to reconnect to LDAP server")
 	c.Disconnect()
+
 	return c.Connect()
 }
 
@@ -185,6 +191,7 @@ func (c *Client) Search(searchRequest *ldap.SearchRequest) (*ldap.SearchResult, 
 	result, err := c.conn.Search(searchRequest)
 	if err != nil {
 		c.logger.Error("LDAP search failed", zap.Error(err))
+
 		return nil, fmt.Errorf("LDAP search failed: %w", err)
 	}
 
@@ -211,6 +218,7 @@ func (c *Client) SearchWithPaging(searchRequest *ldap.SearchRequest, pageSize ui
 	result, err := c.conn.Search(searchRequest)
 	if err != nil {
 		c.logger.Error("LDAP paged search failed", zap.Error(err))
+
 		return nil, fmt.Errorf("LDAP paged search failed: %w", err)
 	}
 
@@ -225,6 +233,7 @@ func (c *Client) SearchWithPaging(searchRequest *ldap.SearchRequest, pageSize ui
 func (c *Client) GetLastError() error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
+
 	return c.lastError
 }
 
@@ -258,6 +267,7 @@ func (c *Client) HealthCheck() error {
 	_, err := c.Search(searchRequest)
 	if err != nil {
 		c.logger.Error("health check failed", zap.Error(err))
+
 		return fmt.Errorf("health check failed: %w", err)
 	}
 
