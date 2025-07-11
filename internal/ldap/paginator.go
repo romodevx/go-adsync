@@ -1,6 +1,7 @@
 package ldap
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -31,6 +32,7 @@ type Paginator struct {
 	mutex      sync.RWMutex
 	logger     *zap.Logger
 	pageCount  int
+	pageIndex  int
 }
 
 // NewPaginator creates a new LDAP paginator.
@@ -48,6 +50,7 @@ func NewPaginator(client *Client, config *PaginatorConfig) *Paginator {
 		mutex:      sync.RWMutex{},
 		logger:     logger,
 		pageCount:  0,
+		pageIndex:  0,
 	}
 }
 
@@ -176,6 +179,7 @@ func (p *Paginator) Reset() {
 	p.lastCookie = nil
 	p.hasMore = true
 	p.pageCount = 0
+	p.pageIndex = 0
 
 	p.logger.Debug("paginator reset")
 }
@@ -212,4 +216,37 @@ func (p *Paginator) GetTotalEntries() int {
 	defer p.mutex.RUnlock()
 
 	return int(p.config.PageSize) * p.pageCount
+}
+
+// GetPageIndex returns the current page index.
+func (p *Paginator) GetPageIndex() int {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return p.pageCount
+}
+
+// SetPageIndex sets the current page index (for resume logic).
+func (p *Paginator) SetPageIndex(idx int) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.pageCount = idx
+}
+
+// SkipToPage skips pages up to the given page index (for resume logic).
+func (p *Paginator) SkipToPage(ctx context.Context, targetPage int) error {
+	for p.GetPageIndex() < targetPage && p.HasMore() {
+		_, err := p.NextPage()
+		if err != nil {
+			return err
+		}
+		// Optionally check context for cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+	}
+
+	return nil
 }

@@ -291,7 +291,7 @@ func (s *syncer) handleErrorCallback(err error, ok bool, errChan *<-chan error) 
 	return nil
 }
 
-// Resume continues synchronization from the last saved state.
+// Resume continues synchronization from the last saved state (memory only).
 func (s *syncer) Resume(ctx context.Context) (<-chan User, <-chan error) {
 	userChan := make(chan User, 100)
 	errChan := make(chan error, 10)
@@ -300,27 +300,40 @@ func (s *syncer) Resume(ctx context.Context) (<-chan User, <-chan error) {
 		defer close(userChan)
 		defer close(errChan)
 
-		s.loadLastCookieState()
+		if err := s.initializeResumeState(ctx, errChan); err != nil {
+			return
+		}
+
 		ldapUserChan, ldapErrChan := s.client.SyncAll(ctx)
 		s.processResumeChannels(ctx, userChan, errChan, ldapUserChan, ldapErrChan)
-		s.saveProgressWithLog("failed to save final progress")
 	}()
 
 	return userChan, errChan
 }
 
-// loadLastCookieState loads the last cookie from storage if available.
-func (s *syncer) loadLastCookieState() {
+// initializeResumeState initializes the resume state from storage.
+func (s *syncer) initializeResumeState(ctx context.Context, errChan chan<- error) error {
 	var lastCookie []byte
-	if err := s.storage.Load("last_cookie", &lastCookie); err == nil {
-		s.client.SetLastCookie(lastCookie)
-		s.logger.Info("resumed from saved state")
-	} else {
-		s.logger.Info("no saved state found, starting fresh")
+
+	var pageIndex int
+
+	_ = s.storage.Load("last_cookie", &lastCookie)
+	_ = s.storage.Load("page_index", &pageIndex)
+
+	s.client.SetLastCookie(lastCookie)
+	s.client.SetPageIndex(0)
+
+	// Try to skip to the correct page if lastCookie is invalid
+	if err := s.client.SkipToPage(ctx, pageIndex); err != nil {
+		errChan <- fmt.Errorf("failed to skip to page %d: %w", pageIndex, err)
+
+		return err
 	}
+
+	return nil
 }
 
-// processResumeChannels processes the channels from LDAP client.
+// processResumeChannels processes the resume channels.
 func (s *syncer) processResumeChannels(
 	ctx context.Context,
 	userChan chan<- User,
@@ -328,29 +341,18 @@ func (s *syncer) processResumeChannels(
 	ldapUserChan <-chan *ldap.User,
 	ldapErrChan <-chan error,
 ) {
+	var pageIndex int
+	_ = s.storage.Load("page_index", &pageIndex)
+
+	pageCounter := pageIndex
+
 	for {
 		select {
 		case ldapUser, ok := <-ldapUserChan:
-			if !ok {
-				ldapUserChan = nil
-
-				continue
-			}
-
-			s.processResumeUser(ldapUser, userChan)
-
+			ldapUserChan = s.handleResumeUser(ldapUser, ok, userChan, &pageCounter, ldapUserChan)
 		case err, ok := <-ldapErrChan:
-			if !ok {
-				ldapErrChan = nil
-
-				continue
-			}
-
-			s.processResumeError(err, errChan)
-
+			ldapErrChan = s.handleResumeError(err, ok, errChan, ldapErrChan)
 		case <-ctx.Done():
-			s.saveProgressWithLog("failed to save progress on exit")
-
 			return
 		}
 
@@ -360,77 +362,59 @@ func (s *syncer) processResumeChannels(
 	}
 }
 
-// processResumeUser processes a single user during resume.
-func (s *syncer) processResumeUser(ldapUser *ldap.User, userChan chan<- User) {
+// handleResumeUser handles a user during resume processing.
+func (s *syncer) handleResumeUser(
+	ldapUser *ldap.User,
+	ok bool,
+	userChan chan<- User,
+	pageCounter *int,
+	ldapUserChan <-chan *ldap.User,
+) <-chan *ldap.User {
+	if !ok {
+		return nil
+	}
+
 	user := s.convertLDAPUser(ldapUser)
+	userChan <- user
 
 	s.mutex.Lock()
 	s.result.ProcessedUsers++
-	shouldSave := s.result.ProcessedUsers%100 == 0
 	s.mutex.Unlock()
 
-	userChan <- user
-
-	if shouldSave {
-		s.saveProgressWithLog("failed to save progress")
+	// Save state after each page
+	if s.result.ProcessedUsers%s.config.PageSize == 0 {
+		*pageCounter++
+		_ = s.storage.Save("last_cookie", s.client.GetLastCookie())
+		_ = s.storage.Save("page_index", *pageCounter)
 	}
+
+	return ldapUserChan
 }
 
-// processResumeError processes an error during resume.
-func (s *syncer) processResumeError(err error, errChan chan<- error) {
+// handleResumeError handles an error during resume processing.
+func (s *syncer) handleResumeError(
+	err error,
+	ok bool,
+	errChan chan<- error,
+	ldapErrChan <-chan error,
+) <-chan error {
+	if !ok {
+		return nil
+	}
+
 	if err != nil {
-		s.mutex.Lock()
-		s.result.ErrorCount++
-		s.result.Errors = append(s.result.Errors, err)
-		s.mutex.Unlock()
 		errChan <- err
 	}
+
+	return ldapErrChan
 }
 
-// saveProgressWithLog saves progress and logs any errors.
-func (s *syncer) saveProgressWithLog(logMessage string) {
-	if err := s.saveProgress(); err != nil {
-		s.logger.Warn(logMessage, zap.Error(err))
-	}
-}
-
-// GetStats returns current synchronization statistics.
-func (s *syncer) GetStats() SyncStats {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
-	stats := s.stats
-	if s.isRunning {
-		stats.Duration = time.Since(s.startTime)
-		if stats.Duration.Seconds() > 0 {
-			stats.UsersPerSecond = float64(stats.TotalPages*s.config.PageSize) / stats.Duration.Seconds()
-		}
-	}
-
-	return stats
-}
-
-// GetResult returns the final synchronization result.
-func (s *syncer) GetResult() SyncResult {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
-	return s.result
-}
-
-// Reset clears all saved state and starts fresh.
+// Reset clears all saved state and starts fresh (memory only).
 func (s *syncer) Reset() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	// Clear all state keys
-	keys := []string{"last_cookie", "processed_users", "current_page", "total_pages", "sync_stats"}
-	for _, key := range keys {
-		if err := s.storage.Delete(key); err != nil {
-			s.logger.Warn("failed to delete state key", zap.String("key", key), zap.Error(err))
-		}
-	}
-
+	_ = s.storage.Delete("last_cookie")
+	_ = s.storage.Delete("page_index")
 	// Reset internal state
 	s.stats = SyncStats{
 		StartTime:      time.Time{},
@@ -489,26 +473,6 @@ func (s *syncer) convertLDAPUser(ldapUser *ldap.User) User {
 	}
 }
 
-// saveProgress saves the current synchronization progress.
-func (s *syncer) saveProgress() error {
-	cookie := s.client.GetLastCookie()
-	if cookie != nil {
-		if err := s.storage.Save("last_cookie", cookie); err != nil {
-			return fmt.Errorf("failed to save last cookie: %w", err)
-		}
-	}
-
-	if err := s.storage.Save("sync_stats", s.stats); err != nil {
-		return fmt.Errorf("failed to save sync stats: %w", err)
-	}
-
-	if err := s.storage.Save("sync_result", s.result); err != nil {
-		return fmt.Errorf("failed to save sync result: %w", err)
-	}
-
-	return nil
-}
-
 // createDefaultLogger creates a default logger with the specified level.
 func createDefaultLogger(level string) (*zap.Logger, error) {
 	config := zap.NewProductionConfig()
@@ -532,4 +496,20 @@ func createDefaultLogger(level string) (*zap.Logger, error) {
 	}
 
 	return logger, nil
+}
+
+// GetResult returns the final synchronization result.
+func (s *syncer) GetResult() SyncResult {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return s.result
+}
+
+// GetStats returns current synchronization statistics.
+func (s *syncer) GetStats() SyncStats {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return s.stats
 }

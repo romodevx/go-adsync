@@ -348,3 +348,18 @@ func (c *Client) Close() error {
 
 	return nil
 }
+
+// GetPageIndex returns the current page index from the paginator.
+func (c *Client) GetPageIndex() int {
+	return c.paginator.GetPageIndex()
+}
+
+// SetPageIndex sets the current page index in the paginator.
+func (c *Client) SetPageIndex(idx int) {
+	c.paginator.SetPageIndex(idx)
+}
+
+// SkipToPage skips pages up to the given page index (for resume logic).
+func (c *Client) SkipToPage(ctx context.Context, targetPage int) error {
+	return c.paginator.SkipToPage(ctx, targetPage)
+}
