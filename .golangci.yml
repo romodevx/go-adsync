@@ -1,0 +1,109 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - ireturn               # Interface returns are acceptable for this API
+    - nosprintfhostport     # fmt.Sprintf for URLs is acceptable
+    - perfsprint            # Performance optimizations not critical here
+    - wrapcheck             # Context errors don't need wrapping
+    - mnd                   # Magic numbers will be handled with comments where needed
+
+  settings:
+    depguard:
+      rules:
+        all:
+          files: ["$all"]
+          deny:
+            - desc: Use `github.com/google/uuid` package for UUIDs instead.
+              pkg: github.com/xtgo/uuid
+
+    forbidigo:
+      forbid:
+        - msg: Use `require` variants instead.
+          pattern: ^assert\.
+        - msg: Use `Func` suffix for function variables.
+          pattern: Fn\b
+        - msg: Use built-in `max` function instead.
+          pattern: \bmath\.Max\b
+        - msg: Use built-in `min` function instead.
+          pattern: \bmath\.Min\b
+
+    gomoddirectives:
+      replace-local: true
+
+    gosec:
+      excludes:
+        - G404      # ignore non-crypto rand warnings
+
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+
+    testifylint:
+      enable-all: true
+      disable:
+        - go-require
+
+    varnamelen:
+      ignore-names:
+        - db
+        - uc
+        - h
+        - op
+        - c
+        - e
+        - v2
+        - DB
+        - i
+        - bp
+        - je
+        - vc
+        - sr
+        - rr
+        - cm
+        - ci
+        - po
+        - ia
+        - ta
+        - tc
+        - tr
+        - id
+        - tx
+        - conn
+        - ok
+        - ai
+        - ch
+        - cp
+
+  exclusions:
+    paths:
+      - '.*_test\.go$'
+      - 'examples/.*\.go$'
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: (.+)\.go$
+        text: Error return value of .(\w+\.Rollback(.*)). is not checked
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+  settings:
+    gci:
+      sections:
+        - Standard
+        - Default
+        # no custom prefixes here

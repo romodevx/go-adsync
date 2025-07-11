@@ -1,0 +1,80 @@
+# Organizational Units
+dn: ou=users,dc=example,dc=com
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+# Test Users
+dn: cn=John Doe,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: John Doe
+sn: Doe
+givenName: John
+displayName: John Doe
+mail: john.doe@example.com
+uid: john.doe
+userPassword: password123
+
+dn: cn=Jane Smith,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: Jane Smith
+sn: Smith
+givenName: Jane
+displayName: Jane Smith
+mail: jane.smith@example.com
+uid: jane.smith
+userPassword: password123
+
+dn: cn=Bob Johnson,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: Bob Johnson
+sn: Johnson
+givenName: Bob
+displayName: Bob Johnson
+mail: bob.johnson@example.com
+uid: bob.johnson
+userPassword: password123
+
+dn: cn=Alice Brown,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: Alice Brown
+sn: Brown
+givenName: Alice
+displayName: Alice Brown
+mail: alice.brown@example.com
+uid: alice.brown
+userPassword: password123
+
+dn: cn=Charlie Wilson,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: Charlie Wilson
+sn: Wilson
+givenName: Charlie
+displayName: Charlie Wilson
+mail: charlie.wilson@example.com
+uid: charlie.wilson
+userPassword: password123
+
+# Test Groups
+dn: cn=developers,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: developers
+description: Development Team
+member: cn=John Doe,ou=users,dc=example,dc=com
+member: cn=Jane Smith,ou=users,dc=example,dc=com
+
+dn: cn=admins,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: admins
+description: System Administrators
+member: cn=Bob Johnson,ou=users,dc=example,dc=com
+
+dn: cn=users,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: users
+description: Regular Users
+member: cn=Alice Brown,ou=users,dc=example,dc=com
+member: cn=Charlie Wilson,ou=users,dc=example,dc=com

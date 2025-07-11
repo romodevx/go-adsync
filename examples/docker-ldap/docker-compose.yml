@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # OpenLDAP Server para testing local
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: go-adsync-ldap
+    environment:
+      LDAP_LOG_LEVEL: "256"
+      LDAP_ORGANISATION: "Example Corp"
+      LDAP_DOMAIN: "example.com"
+      LDAP_BASE_DN: "dc=example,dc=com"
+      LDAP_ADMIN_PASSWORD: "adminpassword"
+      LDAP_CONFIG_PASSWORD: "configpassword"
+      LDAP_READONLY_USER: "false"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "true"
+      LDAP_TLS_CRT_FILENAME: "ldap.crt"
+      LDAP_TLS_KEY_FILENAME: "ldap.key"
+      LDAP_TLS_DH_PARAM_FILENAME: "dhparam.pem"
+      LDAP_TLS_CA_CRT_FILENAME: "ca.crt"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_CIPHER_SUITE: "SECURE256:-VERS-SSL3.0"
+      LDAP_TLS_PROTOCOL_MIN: "3.1"
+      LDAP_TLS_VERIFY_CLIENT: "demand"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+      LDAP_SSL_HELPER_PREFIX: "ldap"
+    tty: true
+    stdin_open: true
+    volumes:
+      - /var/lib/ldap
+      - /etc/ldap/slapd.d
+      - /container/service/slapd/assets/certs/
+    ports:
+      - "389:389"
+      - "636:636"
+    hostname: ldap.example.com
+
+  # phpLDAPadmin para administración web
+  phpldapadmin:
+    image: osixia/phpldapadmin:latest
+    container_name: go-adsync-admin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8080:80"
+    depends_on:
+      - openldap
+
+  # Script para poblar datos de prueba
+  ldap-seed:
+    image: osixia/openldap:1.5.0
+    container_name: go-adsync-seed
+    environment:
+      LDAP_LOG_LEVEL: "256"
+    volumes:
+      - ./seed-data.ldif:/tmp/seed-data.ldif:ro
+    depends_on:
+      - openldap
+    command: >
+      bash -c "
+        sleep 10 &&
+        ldapadd -x -D 'cn=admin,dc=example,dc=com' -w adminpassword -H ldap://openldap:389 -f /tmp/seed-data.ldif &&
+        echo 'Datos de prueba cargados exitosamente'
+      "
+    restart: "no"
