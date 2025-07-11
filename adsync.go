@@ -45,7 +45,7 @@ func DefaultConfig() *Config {
 		PageSize:      1000,
 		Filter:        "(objectClass=person)",
 		Attributes:    []string{"cn", "sn", "givenName", "mail", "sAMAccountName", "distinguishedName", "memberOf"},
-		SessionFile:   ".adsync_session",
+		SessionFile:   "", // Memory only by default
 		StateStorage:  nil,
 		Timeout:       30 * time.Second,
 		RetryCount:    3,
@@ -126,10 +126,6 @@ func (c *Config) setDefaults() {
 		} else {
 			c.Port = 389
 		}
-	}
-
-	if c.SessionFile == "" {
-		c.SessionFile = ".adsync_session"
 	}
 
 	if len(c.Attributes) == 0 {

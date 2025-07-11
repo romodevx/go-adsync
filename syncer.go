@@ -46,7 +46,8 @@ func New(config *Config) (Syncer, error) {
 	if config.StateStorage != nil {
 		storage = config.StateStorage
 	} else {
-		storage = state.NewFileStateStorage(config.SessionFile)
+		// Default to memory (safer and simpler)
+		storage = state.NewMemoryStateStorage()
 	}
 
 	// Create LDAP client

@@ -1,0 +1,16 @@
+# Generated files from examples
+exported_users.json
+data/
+*.json
+*.log
+
+# Build artifacts
+basic
+adsync-cli
+adsync
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/ 
